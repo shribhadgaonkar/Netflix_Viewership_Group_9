@@ -1,0 +1,16 @@
+project:
+  name: Netflix Viewership Group 9
+
+data:
+  netflix_raw: data/raw/netflix
+  imdb_raw: data/raw/imdb
+  interim: data/interim
+  processed: data/processed
+  samples: data/samples
+
+reports:
+  root: reports
+  figures: reports/figures
+
+notebooks:
+  root: notebooks

@@ -34,12 +34,6 @@ data/samples/*.parquet
 *.tar
 *.tar.gz
 
-# Large database and columnar files
-*.db
-*.sqlite
-*.sqlite3
-*.parquet
-*.feather
 
 # ============================================================
 # Python
