@@ -1,0 +1,10 @@
+pandas
+numpy
+pyarrow
+openpyxl
+rapidfuzz
+scikit-learn
+matplotlib
+jupyter
+pytest
+pyyaml

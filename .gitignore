@@ -1,0 +1,94 @@
+# ============================================================
+# Large datasets
+# ============================================================
+
+# Netflix raw data
+data/raw/netflix/*
+!data/raw/netflix/.gitkeep
+
+# IMDb raw data
+data/raw/imdb/*
+!data/raw/imdb/.gitkeep
+
+# Generated intermediate data
+data/interim/*
+!data/interim/.gitkeep
+
+# Final processed data
+data/processed/*
+!data/processed/.gitkeep
+
+# Keep small sample datasets in Git
+!data/samples/**
+data/samples/*.parquet
+
+# ============================================================
+# Common dataset formats
+# ============================================================
+
+*.tsv.gz
+*.csv.gz
+*.json.gz
+*.zip
+*.7z
+*.tar
+*.tar.gz
+
+# Large database and columnar files
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+*.feather
+
+# ============================================================
+# Python
+# ============================================================
+
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.python-version
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# Jupyter Notebook
+# ============================================================
+
+.ipynb_checkpoints/
+
+# ============================================================
+# Testing and coverage
+# ============================================================
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ============================================================
+# IDE and operating system
+# ============================================================
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ============================================================
+# Temporary files
+# ============================================================
+
+*.tmp
+*.temp
+*.log
+~$*
