@@ -110,17 +110,31 @@ def prepare_netflix() -> pd.DataFrame:
     frame["netflix_runtime_raw"] = frame[runtime_column].astype("string") if runtime_column else pd.NA
     frame["source_netflix_file"] = input_path.relative_to(REPO_ROOT).as_posix()
 
-    parsed = frame["netflix_title_raw"].map(parse_netflix_title).apply(pd.Series)
+    raw_type = frame[type_column] if type_column else pd.Series(pd.NA, index=frame.index)
+    parsed = pd.DataFrame(
+        [
+            parse_netflix_title(title, type_value)
+            for title, type_value in zip(frame["netflix_title_raw"], raw_type, strict=False)
+        ]
+    )
     frame["netflix_series_title"] = parsed["series_title"]
     frame["netflix_normalized_title"] = parsed["normalized_title"]
+    frame["netflix_canonical_title"] = parsed["canonical_title"]
+    frame["netflix_compact_title"] = parsed["compact_title"]
+    frame["netflix_raw_normalized_title"] = parsed["raw_normalized_title"]
+    frame["netflix_raw_canonical_title"] = parsed["raw_canonical_title"]
+    frame["netflix_raw_compact_title"] = parsed["raw_compact_title"]
     frame["netflix_season_number"] = coerce_nullable_int(parsed["season_number"])
     frame["netflix_season_label"] = parsed["season_label"].astype("string")
     frame["netflix_title_year_hint"] = coerce_nullable_int(parsed["title_year_hint"])
-
-    raw_type = frame[type_column] if type_column else pd.Series(pd.NA, index=frame.index)
+    frame["netflix_season_parse_method"] = parsed["season_parse_method"].astype("string")
+    frame["netflix_season_parse_confidence"] = pd.to_numeric(
+        parsed["season_parse_confidence"], errors="coerce"
+    )
+    frame["netflix_title_parse_notes"] = parsed["title_parse_notes"].astype("string")
     frame["netflix_format"] = [
-        infer_netflix_format(type_value, season_label)
-        for type_value, season_label in zip(raw_type, frame["netflix_season_label"], strict=False)
+        infer_netflix_format(type_value, parse_result)
+        for type_value, parse_result in zip(raw_type, parsed.to_dict("records"), strict=False)
     ]
 
     frame = add_release_fields(frame)
@@ -136,8 +150,14 @@ def prepare_netflix() -> pd.DataFrame:
 
     series_rows = int((frame["netflix_format"] == "series").sum())
     season_rows = int(frame["netflix_season_number"].notna().sum())
+    heuristic_rows = int(
+        frame["netflix_season_parse_method"]
+        .isin(["trailing_number_tv_heuristic", "trailing_roman_tv_heuristic"])
+        .sum()
+    )
     log(f"Netflix series-like rows: {series_rows:,}")
     log(f"Netflix rows with extracted seasons: {season_rows:,}")
+    log(f"Netflix rows using heuristic season parsing: {heuristic_rows:,}")
     log(f"Saved cleaned Netflix data: {OUTPUT_PATH.relative_to(REPO_ROOT).as_posix()}")
     return frame
 
