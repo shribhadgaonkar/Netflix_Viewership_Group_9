@@ -30,6 +30,12 @@ QUALITY_REPORT_CSV = (
 )
 MODELING_DICT_DOC = REPO_ROOT / "docs" / "modeling_data_dictionary.md"
 MODELING_NOTES_DOC = REPO_ROOT / "docs" / "modeling_feature_notes.md"
+HALFYEAR_FEATURE_COLUMNS = [
+    "first_observed_halfyear_period",
+    "first_observed_halfyear_views",
+    "first_observed_halfyear_hours",
+    "first_halfyear_hours_per_view",
+]
 
 TARGET_COLUMNS = [
     "target_next_season_views",
@@ -59,6 +65,10 @@ SAFE_PREDICTOR_COLUMNS = [
     "netflix_log_views",
     "netflix_log_hours",
     "netflix_hours_per_view",
+    "first_observed_halfyear_period",
+    "first_observed_halfyear_views",
+    "first_observed_halfyear_hours",
+    "first_halfyear_hours_per_view",
     "netflix_season_number",
     "season_order",
     "season_is_first",
@@ -404,6 +414,8 @@ def feature_group_for_column(column: str) -> str:
         return "imdb_quality"
     if column.startswith("netflix_") and any(token in column for token in ["views", "hours", "runtime", "log"]):
         return "netflix_current"
+    if column.startswith("first_observed_halfyear_") or column == "first_halfyear_hours_per_view":
+        return "netflix_halfyear_observed"
     if column in {"netflix_season_number", "season_is_first", "season_is_later"}:
         return "season_structure"
     if column in {"netflix_imdb_year_gap", "netflix_imdb_runtime_gap", "imdb_age_at_netflix_year", "imdb_started_before_netflix_flag", "imdb_same_year_as_netflix_flag"}:
@@ -527,7 +539,20 @@ def create_quality_report(
         {"metric": "dropped_column_count", "value": int((manifest["role"] == "dropped").sum()), "notes": "Columns excluded from the strict modeling matrix."},
     ]
 
-    for column in ["netflix_views", "netflix_hours_viewed", "imdb_average_rating", "imdb_num_votes", "netflix_runtime", "prev_season_views", "prev_season_hours", "imdb_top_cast_known_for_count_proxy"]:
+    for column in [
+        "netflix_views",
+        "netflix_hours_viewed",
+        "imdb_average_rating",
+        "imdb_num_votes",
+        "netflix_runtime",
+        "prev_season_views",
+        "prev_season_hours",
+        "imdb_top_cast_known_for_count_proxy",
+        "first_observed_halfyear_period",
+        "first_observed_halfyear_views",
+        "first_observed_halfyear_hours",
+        "first_halfyear_hours_per_view",
+    ]:
         if column in final_modeling.columns:
             rows.append(
                 {
@@ -549,6 +574,41 @@ def create_quality_report(
             )
 
     return pd.DataFrame(rows)
+
+
+def log_halfyear_modeling_validation(
+    source_copy: pd.DataFrame,
+    final_modeling: pd.DataFrame,
+    prior_modeling_rows: int,
+) -> None:
+    log(
+        f"Modeling rows before/after half-year propagation: "
+        f"{prior_modeling_rows:,} -> {len(final_modeling):,}"
+    )
+    log(
+        f"Duplicate netflix_row_id count in modeling dataset: "
+        f"{int(final_modeling['netflix_row_id'].duplicated().sum()):,}"
+    )
+    for column in HALFYEAR_FEATURE_COLUMNS:
+        if column in source_copy.columns:
+            log(f"Modeling source missing count for {column}: {int(source_copy[column].isna().sum()):,}")
+        if column in final_modeling.columns:
+            log(f"Modeling final missing count for {column}: {int(final_modeling[column].isna().sum()):,}")
+    example_title_column = "title_name" if "title_name" in source_copy.columns else "netflix_title_raw"
+    available = [
+        column
+        for column in [
+            example_title_column,
+            "netflix_row_id",
+            "first_observed_halfyear_period",
+            "first_observed_halfyear_views",
+            "first_observed_halfyear_hours",
+            "first_halfyear_hours_per_view",
+        ]
+        if column in source_copy.columns
+    ]
+    examples = source_copy[available].drop_duplicates(subset=["netflix_row_id"]).head(8)
+    log("Modeling half-year feature examples:\n" + examples.to_string(index=False))
 
 
 def validate_pipeline(
@@ -637,6 +697,11 @@ def write_modeling_docs(manifest: pd.DataFrame) -> None:
 def build_modeling_dataset() -> pd.DataFrame:
     enriched_mtime_before = ENRICHED_PARQUET.stat().st_mtime if ENRICHED_PARQUET.exists() else None
     enriched = load_enriched()
+    prior_modeling_rows = 0
+    if MODELING_PARQUET.exists():
+        prior_modeling_rows = len(pd.read_parquet(MODELING_PARQUET))
+    elif MODELING_CSV.exists():
+        prior_modeling_rows = len(pd.read_csv(MODELING_CSV, low_memory=False))
     source_copy = create_source_copy(enriched)
     source_copy_loaded = load_source_copy()
 
@@ -675,6 +740,7 @@ def build_modeling_dataset() -> pd.DataFrame:
     log(
         f"Retained {predictor_count:,} predictor columns and created {target_count:,} target columns."
     )
+    log_halfyear_modeling_validation(source_copy_loaded, final_modeling, prior_modeling_rows)
     return final_modeling
 
 

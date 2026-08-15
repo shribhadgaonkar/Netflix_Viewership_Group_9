@@ -22,6 +22,10 @@
 | `netflix_hours_viewed` | Canonical hours-viewed metric, currently populated from total hours when available. |
 | `netflix_views` | Canonical views metric, currently populated from total views when available. |
 | `netflix_runtime` | Runtime converted to minutes when parsable. |
+| `first_observed_halfyear_period` | Earliest half-year Netflix reporting period in the local half-year files where both views and hours are present for the normalized Netflix title. |
+| `first_observed_halfyear_views` | Views reported in the earliest valid observed half-year period. |
+| `first_observed_halfyear_hours` | Hours reported in the earliest valid observed half-year period. |
+| `first_halfyear_hours_per_view` | `first_observed_halfyear_hours / first_observed_halfyear_views`, with missing output when views are missing or zero. |
 | `source_netflix_file` | Relative path of the raw Netflix input file used for the row. |
 
 ## IMDb Series-Season Fields
